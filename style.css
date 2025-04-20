@@ -1,0 +1,169 @@
+/* General Styles */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa; /* Light gray background */
+    font-size: 0.85em; /* Smaller font size for better fit */
+    line-height: 1.4; /* Reduced line spacing */
+}
+
+/* Container */
+.container {
+    width: 90%;
+    max-width: 900px; /* Increased maximum width for better layout */
+    margin: auto;
+    padding: 20px;
+    background: #ffffff; /* White background for content */
+    border-radius: 8px; /* Rounded corners */
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+}
+
+/* Header */
+header {
+    background: #007bff; /* Blue color */
+    color: #ffffff;
+    padding: 15px 0; /* Reduced padding for a more compact header */
+    text-align: center; /* Center align the header text */
+    border-radius: 8px 8px 0 0; /* Rounded top corners */
+}
+
+/* Header Title */
+header h1 {
+    margin: 0; /* Remove default margin */
+}
+
+/* Sidebar Styles */
+.sidebar {
+    height: 100vh; /* Full height */
+    width: 250px; /* Sidebar width */
+    position: fixed; /* Fixed sidebar */
+    top: 0; /* Stay at the top */
+    left: 0; /* Align to the left */
+    background-color: #007bff; /* Blue background */
+    color: white; /* White text */
+    padding: 20px; /* Padding */
+}
+
+.sidebar h2 {
+    font-size: 1.2em; /* Smaller font size */
+    font-weight: bold; /* Bold text */
+}
+
+/* Adjusted Sidebar Item Styles */
+.main-sidebar .nav-item {
+    margin-bottom: 0; /* Remove bottom margin */
+}
+
+.main-sidebar .nav-link {
+    padding: 10px 15px; /* Adjust padding to reduce space */
+    color: white; /* Ensure text color is white */
+    display: block; /* Block display for links */
+    font-weight: bold; /* Bold text for links */
+}
+
+.sidebar a {
+    color: black; /* Black text for links */
+    text-decoration: none; /* Remove underline */
+    display: block; /* Block display for links */
+    margin: 10px 0; /* Margin between links */
+    font-weight: bold; /* Bold text for links */
+}
+
+.sidebar a:hover {
+    text-decoration: underline; /* Underline on hover */
+}
+
+/* Button Styles */
+.btn {
+    display: inline-block; /* Make the link behave like a button */
+    background-color: #007bff; /* Blue background */
+    color: #ffffff; /* White text */
+    padding: 10px 20px; /* Padding for the button */
+    border-radius: 5px; /* Rounded corners */
+    text-decoration: none; /* Remove underline */
+    text-align: center; /* Center text */
+    transition: background-color 0.3s; /* Smooth transition */
+}
+
+.btn:hover {
+    background-color: #0056b3; /* Darker blue on hover */
+}
+
+/* Form Styles */
+form {
+    background: #ffffff;
+    padding: 15px; /* Reduced padding for a more compact form */
+    border-radius: 5px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px; /* Space between forms */
+}
+
+/* Input Fields */
+input[type="text"], input[type="email"], input[type="password"], select, textarea {
+    width: 100%;
+    padding: 10px; /* Reduced padding for smaller input fields */
+    margin: 8px 0; /* Reduced margin for a more compact layout */
+    border: 1px solid #ced4da; /* Light gray border */
+    border-radius: 5px;
+    transition: border-color 0.3s; /* Smooth transition */
+}
+
+input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus, select:focus, textarea:focus {
+    border-color: #007bff; /* Change border color on focus */
+    outline: none; /* Remove default outline */
+}
+
+/* Submit Button */
+input[type="submit"], .btn {
+    background: #007bff; /* Blue color */
+    color: #ffffff;
+    border: none;
+    padding: 10px; /* Reduced padding for smaller buttons */
+    cursor: pointer;
+    border-radius: 5px; /* Rounded corners */
+    transition: background-color 0.3s; /* Smooth transition */
+}
+
+input[type="submit"]:hover, .btn:hover {
+    background: #0056b3; /* Darker shade on hover */
+}
+
+/* Table Styles */
+.table {
+    margin-bottom: 20px; /* Space below tables */
+    background-color: #ffffff; /* White background for tables */
+    border-radius: 5px; /* Rounded corners */
+    overflow: hidden; /* Prevent overflow */
+}
+
+.table th, .table td {
+    vertical-align: middle; /* Center align content */
+    padding: 12px; /* Increased padding for table cells */
+    border: 1px solid #dee2e6; /* Light gray border */
+}
+
+/* Report Form Styles */
+.report-form {
+    display: flex;
+    justify-content: flex-end; /* Aligns the form to the right */
+    margin-bottom: 20px; /* Space below the form */
+}
+
+.report-form h2 {
+    margin-right: 20px; /* Space between the title and the form */
+}
+
+/* Responsive Styles */
+@media (max-width: 600px) {
+    .container {
+        width: 100%;
+        padding: 10px;
+    }
+
+    header {
+        font-size: 1.5em;
+    }
+
+    input[type="text"], input[type="email"], input[type="password"], select, textarea {
+        width: 100%;
+    }
+}
