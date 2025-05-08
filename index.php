@@ -20,6 +20,8 @@ session_start();
        <div class="button-container text-center">
            <a href="register.php" class="btn btn-primary">Register</a>
            <a href="login.php" class="btn btn-primary">Login</a>
+           <a href="faq.html" class="btn btn-primary">FaQ's</a>
+           <a href="help.php" class="btn btn-primary">Help</a>
        </div>
    </div>
 

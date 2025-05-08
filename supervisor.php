@@ -4,13 +4,11 @@ include 'database.php';
 
 // Set session timeout
 $timeout_duration = 1800; // 30 minutes in seconds
-if (isset($_SESSION['LAST_ACTIVITY']) && (time() - $_SESSION['LAST_ACTIVITY']) > $timeout_duration) {
-    session_unset();
-    session_destroy();
-}
+
+// Update the LAST_ACTIVITY timestamp on every page load
 $_SESSION['LAST_ACTIVITY'] = time();
 
-// Check if user is logged in
+// Check if user is logged in with correct role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'supervisor') {
     header("Location: login.php");
     exit();
@@ -150,6 +148,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['file'])) {
     }
 }
 
+// Handle sending message/comment about a shared file
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send_message'])) {
+    $student_id = $_POST['student_id'];
+    $file_id = $_POST['file_id'];
+    $message = $_POST['message'];
+    $sender_id = $_SESSION['user_id'];
+    
+    // Insert message into the messages table
+    $stmt = $pdo->prepare("INSERT INTO messages (sender_id, receiver_id, message, created_at, is_read) VALUES (?, ?, ?, NOW(), 0)");
+    $stmt->execute([$sender_id, $student_id, $message]);
+    
+    // Send notification to student
+    $stmt = $pdo->prepare("INSERT INTO notifications (user_id, message, sender_id, created_at) VALUES (?, ?, ?, NOW())");
+    $stmt->execute([$student_id, "Your supervisor has sent feedback about your shared file.", $sender_id]);
+    
+    // Redirect to prevent form resubmission
+    header("Location: supervisor.php?section=student-shared-files&message_sent=1");
+    exit();
+}
+
 // Fetch notifications again to ensure the latest ones are displayed
 $notifications = $pdo->query("
     SELECT n.*, u.first_name, u.last_name, u.reg_no 
@@ -167,7 +185,7 @@ $shared_files_by_supervisor = $pdo->query("
     WHERE sf.supervisor_id = " . $_SESSION['user_id'] . " AND sf.shared_by = 'supervisor'"
 )->fetchAll();
 
-// Fetch files shared BY students TO supervisor - Now using programme_of_study column
+// Fetch files shared BY students TO supervisor
 $shared_files_from_students = $pdo->query("
     SELECT sf.*, u.first_name, u.last_name, u.reg_no, u.programme_of_study, sf.created_at 
     FROM shared_files sf 
@@ -175,8 +193,23 @@ $shared_files_from_students = $pdo->query("
     WHERE sf.supervisor_id = " . $_SESSION['user_id'] . " AND sf.shared_by = 'student'"
 )->fetchAll();
 
+// Fetch previous messages sent to students about their files
+$previous_messages = $pdo->query("
+    SELECT m.*, u_sender.first_name as sender_first_name, u_sender.last_name as sender_last_name,
+    u_receiver.first_name as receiver_first_name, u_receiver.last_name as receiver_last_name,
+    u_receiver.reg_no
+    FROM messages m
+    JOIN users u_sender ON m.sender_id = u_sender.id
+    JOIN users u_receiver ON m.receiver_id = u_receiver.id
+    WHERE m.sender_id = " . $_SESSION['user_id'] . "
+    ORDER BY m.created_at DESC
+")->fetchAll();
+
 // Count unread notifications
 $unread_count = $pdo->query("SELECT COUNT(*) FROM notifications WHERE user_id = " . $_SESSION['user_id'] . " AND is_read = 0")->fetchColumn();
+
+// Get the active section from URL parameter if available
+$active_section = isset($_GET['section']) ? $_GET['section'] : '';
 ?>
 
 <!DOCTYPE html>
@@ -245,6 +278,24 @@ $unread_count = $pdo->query("SELECT COUNT(*) FROM notifications WHERE user_id = 
             font-weight: bold;
             margin-bottom: 5px;
         }
+        .message-history {
+            margin-top: 20px;
+        }
+        .message-item {
+            background-color: #f8f9fa;
+            border-left: 4px solid #17a2b8;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        .success-message {
+            background-color: #d4edda;
+            color: #155724;
+            border-color: #c3e6cb;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
     </style>
 </head>
 <body>
@@ -295,6 +346,12 @@ $unread_count = $pdo->query("SELECT COUNT(*) FROM notifications WHERE user_id = 
                         <a href="#student-shared-files" class="nav-link nav-student-shared-files section-link" data-section="student-shared-files">
                             <i class="nav-icon fas fa-file-download"></i>
                             <p>Files From Students</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#sent-messages" class="nav-link nav-sent-messages section-link" data-section="sent-messages">
+                            <i class="nav-icon fas fa-comment"></i>
+                            <p>Sent Messages</p>
                         </a>
                     </li>
                     <li class="nav-item">
@@ -402,7 +459,7 @@ $unread_count = $pdo->query("SELECT COUNT(*) FROM notifications WHERE user_id = 
                                         </button>
                                     <?php endif; ?>
                                     <button type="submit" name="notification_action" value="delete" class="btn btn-sm btn-outline-danger">
-                                        <i class="fas fa-trash"></i> Delete
+                                        <i class="fas fa-trash"></i> Archive
                                     </button>
                                 </form>
                                 
@@ -467,6 +524,13 @@ $unread_count = $pdo->query("SELECT COUNT(*) FROM notifications WHERE user_id = 
 
         <div id="student-shared-files" class="content-section">
             <h2>Files Shared by Students</h2>
+            
+            <?php if (isset($_GET['message_sent']) && $_GET['message_sent'] == 1): ?>
+                <div class="success-message">
+                    <i class="fas fa-check-circle"></i> Your message has been sent successfully!
+                </div>
+            <?php endif; ?>
+            
             <?php if (empty($shared_files_from_students)): ?>
                 <div class="alert alert-info">No files have been shared by students yet.</div>
             <?php else: ?>
@@ -491,12 +555,91 @@ $unread_count = $pdo->query("SELECT COUNT(*) FROM notifications WHERE user_id = 
                                 <td><?php echo htmlspecialchars($file['created_at']); ?></td>
                                 <td>
                                     <a href="<?php echo htmlspecialchars($file['file_path']); ?>" class="btn btn-primary btn-sm" download>Download</a>
+                                    <button type="button" class="btn btn-info btn-sm" 
+                                        data-toggle="modal" 
+                                        data-target="#messageModal" 
+                                        data-student-id="<?php echo htmlspecialchars($file['student_id']); ?>"
+                                        data-file-id="<?php echo htmlspecialchars($file['id']); ?>"
+                                        data-student-name="<?php echo htmlspecialchars($file['first_name'] . ' ' . $file['last_name']); ?>"
+                                        data-file-name="<?php echo htmlspecialchars(basename($file['file_path'])); ?>">
+                                        <i class="fas fa-comment"></i> Send Feedback
+                                    </button>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
             <?php endif; ?>
+        </div>
+        
+        <div id="sent-messages" class="content-section">
+            <h2>Sent Messages</h2>
+            <?php if (empty($previous_messages)): ?>
+                <div class="alert alert-info">You haven't sent any messages yet.</div>
+            <?php else: ?>
+                <div class="message-history">
+                    <?php foreach ($previous_messages as $message): ?>
+                        <div class="message-item">
+                            <div class="message-header">
+                                <strong>To: </strong> <?php echo htmlspecialchars($message['receiver_first_name'] . ' ' . $message['receiver_last_name']); ?>
+                                <?php if (!empty($message['reg_no'])): ?>
+                                    (<?php echo htmlspecialchars($message['reg_no']); ?>)
+                                <?php endif; ?>
+                                <span class="float-right text-muted">
+                                    <?php echo htmlspecialchars(date('M d, Y h:i A', strtotime($message['created_at']))); ?>
+                                </span>
+                            </div>
+                            <div class="message-content mt-2">
+                                <?php echo htmlspecialchars($message['message']); ?>
+                            </div>
+                            <div class="message-status mt-2">
+                                <span class="badge <?php echo $message['is_read'] ? 'badge-success' : 'badge-secondary'; ?>">
+                                    <?php echo $message['is_read'] ? 'Read' : 'Unread'; ?>
+                                </span>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- Modal for sending messages about files -->
+    <div class="modal fade" id="messageModal" tabindex="-1" role="dialog" aria-labelledby="messageModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="messageModalLabel">Send Feedback</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form method="POST" action="">
+                    <div class="modal-body">
+                        <input type="hidden" name="student_id" id="student_id_input">
+                        <input type="hidden" name="file_id" id="file_id_input">
+                        
+                        <div class="form-group">
+                            <label>Student:</label>
+                            <p id="student_name_display"></p>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>File:</label>
+                            <p id="file_name_display"></p>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="message">Your Feedback:</label>
+                            <textarea class="form-control" name="message" id="message" rows="5" required></textarea>
+                        </div>
+                    </div>
+<div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" name="send_message" class="btn btn-primary">Send Feedback</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -537,6 +680,31 @@ $unread_count = $pdo->query("SELECT COUNT(*) FROM notifications WHERE user_id = 
                 var sectionId = $(this).data('section');
                 toggleSection(sectionId);
             });
+            
+            // Handle the message modal
+            $('#messageModal').on('show.bs.modal', function (event) {
+                var button = $(event.relatedTarget);
+                var studentId = button.data('student-id');
+                var fileId = button.data('file-id');
+                var studentName = button.data('student-name');
+                var fileName = button.data('file-name');
+                
+                var modal = $(this);
+                modal.find('#student_id_input').val(studentId);
+                modal.find('#file_id_input').val(fileId);
+                modal.find('#student_name_display').text(studentName);
+                modal.find('#file_name_display').text(fileName);
+            });
+            
+            // Clear modal form when closed
+            $('#messageModal').on('hidden.bs.modal', function () {
+                $(this).find('form')[0].reset();
+            });
+            
+            // Add a success message fadeout
+            setTimeout(function() {
+                $('.success-message').fadeOut('slow');
+            }, 3000);
         });
     </script>
 </body>
